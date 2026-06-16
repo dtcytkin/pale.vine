@@ -357,7 +357,6 @@ function setMode(mode) {
   state.mode = mode;
   document.querySelectorAll('#mode-switch .seg-btn').forEach(b =>
     b.classList.toggle('active', b.dataset.mode === mode));
-  $('mode-badge').textContent = mode === 'mask' ? 'Маска' : 'Canvas';
   $('view-actions').hidden = mode !== 'canvas';
   $('mask-actions').hidden = mode !== 'mask';
   gesture = null;
