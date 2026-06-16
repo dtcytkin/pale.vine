@@ -86,6 +86,15 @@
             <span>Инвертировать маску</span>
           </label>
 
+          <label class="ctl">
+            <span class="ctl-label">Seed дисперсий</span>
+            <input id="seed" class="num" type="number" min="0" step="1" value="1" />
+          </label>
+          <div class="btn-row">
+            <button id="seed-rand" class="btn">🎲 Seed</button>
+            <button id="grid-reset" class="btn">Сброс сдвига</button>
+          </div>
+
           <div class="colors">
             <label class="color-ctl"><span>Точки</span><input id="dot-color" type="color" value="#111111" /></label>
             <label class="color-ctl"><span>Фон</span><input id="bg-color" type="color" value="#ffffff" /></label>
@@ -95,7 +104,7 @@
         <fieldset class="group" id="view-actions">
           <legend>Вид</legend>
           <button id="reset-view" class="btn">Сбросить зум / поворот</button>
-          <p class="muted">Два пальца: зум, поворот, перенос. Только просмотр — на экспорт не влияет.</p>
+          <p class="muted">2 пальца: зум, поворот, перенос вида (только просмотр). <b>3 пальца: сдвиг сетки точек</b> — влияет на экспорт.</p>
         </fieldset>
 
         <fieldset class="group" id="mask-actions" hidden>

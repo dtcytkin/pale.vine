@@ -4,8 +4,8 @@
 const state = {
   mode: 'canvas',            // 'canvas' | 'mask'
   mask: null,                // HTMLImageElement
-  // artboard = logical drawing space in px (matches mask native size on load)
-  artboard: { w: 1200, h: 1200 },
+  // artboard = logical drawing space in px (always A4 aspect)
+  artboard: { w: 1697, h: 2400 },
   // mask placement inside artboard
   maskT: { x: 0, y: 0, scale: 1, rot: 0 },
   // view transform (preview only, never exported)
@@ -13,6 +13,7 @@ const state = {
   params: {
     size: 6, spacing: 14, influence: 0.7, sizeVar: 0.15,
     posVar: 0.2, threshold: 0.5, invert: false,
+    seed: 1, gridOffset: { x: 0, y: 0 },
     dotColor: '#111111', bgColor: '#ffffff',
   },
   exportPx: 3000,
@@ -28,8 +29,8 @@ const sctx = screen.getContext('2d');
 let DPR = Math.min(window.devicePixelRatio || 1, 2.5);
 
 /* ---------- Deterministic jitter (stable per grid cell) ---------- */
-function hash2(ix, iy) {
-  let h = (ix * 374761393 + iy * 668265263) | 0;
+function hash2(ix, iy, seed) {
+  let h = (ix * 374761393 + iy * 668265263 + seed * 2246822519) | 0;
   h = (h ^ (h >>> 13)) * 1274126177;
   h = h ^ (h >>> 16);
   return ((h >>> 0) % 100000) / 100000; // 0..1
@@ -86,12 +87,16 @@ function renderDots(ctx, w, h, sup = 1) {
   const step = p.spacing * sup;
   const baseR = (p.size * sup) / 2;
   const thr = p.threshold;
+  const seed = p.seed | 0;
+  const offX = p.gridOffset.x * sup, offY = p.gridOffset.y * sup;
 
-  for (let gy = step / 2; gy < h; gy += step) {
-    for (let gx = step / 2; gx < w; gx += step) {
+  // iterate with one step of margin so the lattice still covers edges when offset
+  for (let gy = step / 2 - step; gy < h + step; gy += step) {
+    for (let gx = step / 2 - step; gx < w + step; gx += step) {
       const ix = Math.round(gx / step), iy = Math.round(gy / step);
+      const px = gx + offX, py = gy + offY;     // moved lattice position
       // sample at artboard coords (divide out supersample)
-      let lum = sampleLum(gx / sup, gy / sup);
+      let lum = sampleLum(px / sup, py / sup);
       if (p.invert) lum = 1 - lum;
 
       // darkness 0..1 (1 = fully black)
@@ -103,19 +108,19 @@ function renderDots(ctx, w, h, sup = 1) {
       const darkNorm = thr > 0 ? Math.min(1, (dark - (1 - thr)) / thr) : 1;
       const sizeFactor = (1 - p.influence) + p.influence * darkNorm;
 
-      // size dispersion
-      const rs = (hash2(ix, iy) - 0.5) * 2;        // -1..1
+      // size dispersion (stable per cell + seed)
+      const rs = (hash2(ix, iy, seed) - 0.5) * 2;        // -1..1
       const sizeJit = 1 + rs * p.sizeVar;
 
       let r = baseR * sizeFactor * sizeJit;
       if (r <= 0.2) continue;
 
       // position dispersion
-      const jx = (hash2(ix + 7, iy + 13) - 0.5) * 2 * p.posVar * step;
-      const jy = (hash2(ix + 31, iy + 17) - 0.5) * 2 * p.posVar * step;
+      const jx = (hash2(ix + 7, iy + 13, seed) - 0.5) * 2 * p.posVar * step;
+      const jy = (hash2(ix + 31, iy + 17, seed) - 0.5) * 2 * p.posVar * step;
 
       ctx.beginPath();
-      ctx.arc(gx + jx, gy + jy, r, 0, Math.PI * 2);
+      ctx.arc(px + jx, py + jy, r, 0, Math.PI * 2);
       ctx.fill();
     }
   }
@@ -158,7 +163,7 @@ function draw() {
 }
 
 function _draw() {
-  if (samplerDirty) rebuildSampler();
+  if (samplerDirty) { rebuildSampler(); dotsDirty = true; } // dots depend on sampler
   if (dotsDirty) rebuildDots();
 
   const sw = screen.width, sh = screen.height;
@@ -229,17 +234,19 @@ function exportPNG() {
 /* ---------- Mask load ---------- */
 // logical artboard resolution is independent of mask pixel size:
 // a small mask is only a luminance source — the grid lives in this space.
+// Artboard is always A4 (210:297); orientation follows the image.
 const ARTBOARD_LONG = 2400;
+const A4_SHORT = Math.round(ARTBOARD_LONG * 210 / 297); // ~1697
 
 function loadFile(file) {
   if (!file) return;
   const img = new Image();
   img.onload = () => {
     state.mask = img;
-    const ar = img.width / img.height;
-    state.artboard = ar >= 1
-      ? { w: ARTBOARD_LONG, h: Math.round(ARTBOARD_LONG / ar) }
-      : { w: Math.round(ARTBOARD_LONG * ar), h: ARTBOARD_LONG };
+    const landscape = img.width >= img.height;
+    state.artboard = landscape
+      ? { w: ARTBOARD_LONG, h: A4_SHORT }
+      : { w: A4_SHORT, h: ARTBOARD_LONG };
     state.view = { x: 0, y: 0, scale: 1, rot: 0 };
     fitMask();                 // place mask to fill artboard
     samplerDirty = true; dotsDirty = true;
@@ -282,22 +289,38 @@ function centroid(pts) {
 
 function startGesture() {
   const pts = pointsArr();
-  const t = targetT();
   const c = centroid(pts);
+  // 3+ fingers in Canvas mode = pan the dot grid (a real, exported parameter)
+  const gridPan = state.mode === 'canvas' && pts.length >= 3;
+  const t = gridPan ? state.params.gridOffset : targetT();
   let dist = 0, ang = 0;
   if (pts.length >= 2) {
     const dx = pts[1].x - pts[0].x, dy = pts[1].y - pts[0].y;
     dist = Math.hypot(dx, dy); ang = Math.atan2(dy, dx);
   }
-  gesture = { c, dist, ang, start: { x: t.x, y: t.y, scale: t.scale, rot: t.rot }, n: pts.length };
+  gesture = {
+    c, dist, ang, gridPan,
+    start: { x: t.x, y: t.y, scale: t.scale || 1, rot: t.rot || 0 },
+    n: pts.length,
+  };
 }
 
 function updateGesture() {
   if (!gesture) return;
   const pts = pointsArr();
-  const t = targetT();
   const c = centroid(pts);
 
+  if (gesture.gridPan) {
+    // convert screen-css delta -> artboard px (undo DPR, base fit, view scale)
+    const { fit } = artboardToScreenBase();
+    const k = DPR / (fit * state.view.scale);
+    state.params.gridOffset.x = gesture.start.x + (c.x - gesture.c.x) * k;
+    state.params.gridOffset.y = gesture.start.y + (c.y - gesture.c.y) * k;
+    dotsDirty = true; draw();
+    return;
+  }
+
+  const t = targetT();
   // pan (1 or 2 fingers)
   t.x = gesture.start.x + (c.x - gesture.c.x);
   t.y = gesture.start.y + (c.y - gesture.c.y);
@@ -370,6 +393,13 @@ function init() {
   bindRange('threshold', 'threshold', v => v, v => v / 100);
 
   $('invert').addEventListener('change', e => { state.params.invert = e.target.checked; dotsDirty = true; draw(); });
+
+  $('seed').addEventListener('input', e => { state.params.seed = parseInt(e.target.value, 10) || 0; dotsDirty = true; draw(); });
+  $('seed-rand').addEventListener('click', () => {
+    const s = Math.floor(Math.random() * 100000);
+    $('seed').value = s; state.params.seed = s; dotsDirty = true; draw();
+  });
+  $('grid-reset').addEventListener('click', () => { state.params.gridOffset = { x: 0, y: 0 }; dotsDirty = true; draw(); });
   $('dot-color').addEventListener('input', e => { state.params.dotColor = e.target.value; dotsDirty = true; draw(); });
   $('bg-color').addEventListener('input', e => { state.params.bgColor = e.target.value; dotsDirty = true; draw(); });
 
