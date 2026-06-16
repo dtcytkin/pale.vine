@@ -227,14 +227,21 @@ function exportPNG() {
 }
 
 /* ---------- Mask load ---------- */
+// logical artboard resolution is independent of mask pixel size:
+// a small mask is only a luminance source — the grid lives in this space.
+const ARTBOARD_LONG = 2400;
+
 function loadFile(file) {
   if (!file) return;
   const img = new Image();
   img.onload = () => {
     state.mask = img;
-    state.artboard = { w: img.width, h: img.height };
-    state.maskT = { x: 0, y: 0, scale: 1, rot: 0 };
+    const ar = img.width / img.height;
+    state.artboard = ar >= 1
+      ? { w: ARTBOARD_LONG, h: Math.round(ARTBOARD_LONG / ar) }
+      : { w: Math.round(ARTBOARD_LONG * ar), h: ARTBOARD_LONG };
     state.view = { x: 0, y: 0, scale: 1, rot: 0 };
+    fitMask();                 // place mask to fill artboard
     samplerDirty = true; dotsDirty = true;
     document.getElementById('empty-hint').style.display = 'none';
     updateExportInfo();
