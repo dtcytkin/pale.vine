@@ -1,4 +1,4 @@
-const CACHE = 'palevine-v2';
+const CACHE = 'palevine-v3';
 const ASSETS = [
   './',
   './index.html',

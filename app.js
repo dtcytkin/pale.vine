@@ -261,26 +261,63 @@ function loadFile(file) {
 /* ---------- Gestures (pointer events) ---------- */
 const pointers = new Map();
 let gesture = null;
+let rightDrag = null;   // desktop: right-button drag pans the grid
 
 function targetT() { return state.mode === 'mask' ? state.maskT : state.view; }
 
+// css-px delta -> artboard px (undo DPR, base fit, view scale)
+function artK() {
+  const { fit } = artboardToScreenBase();
+  return DPR / (fit * state.view.scale);
+}
+
+screen.addEventListener('contextmenu', (e) => e.preventDefault());
+
 screen.addEventListener('pointerdown', (e) => {
+  if (e.pointerType === 'mouse' && e.button === 2) {
+    // right button = pan grid (like 3-finger)
+    rightDrag = { sx: e.clientX, sy: e.clientY, baseX: state.params.gridOffset.x, baseY: state.params.gridOffset.y };
+    screen.setPointerCapture(e.pointerId);
+    e.preventDefault();
+    return;
+  }
+  if (e.pointerType === 'mouse' && e.button !== 0) return; // ignore middle/aux
   screen.setPointerCapture(e.pointerId);
   pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
   startGesture();
 });
+
 screen.addEventListener('pointermove', (e) => {
+  if (rightDrag) {
+    const k = artK();
+    state.params.gridOffset.x = rightDrag.baseX + (e.clientX - rightDrag.sx) * k;
+    state.params.gridOffset.y = rightDrag.baseY + (e.clientY - rightDrag.sy) * k;
+    dotsDirty = true; draw();
+    return;
+  }
   if (!pointers.has(e.pointerId)) return;
   pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
   updateGesture();
 });
+
 function endPointer(e) {
+  if (rightDrag) { rightDrag = null; return; }
   pointers.delete(e.pointerId);
   if (pointers.size < 2) gesture = null;
   if (pointers.size >= 1) startGesture();
 }
 screen.addEventListener('pointerup', endPointer);
 screen.addEventListener('pointercancel', endPointer);
+
+// wheel = zoom (mask in Mask mode, view in Canvas mode)
+screen.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  const factor = e.deltaY < 0 ? 1.1 : 1 / 1.1;
+  const t = targetT();
+  t.scale = Math.max(0.05, Math.min(40, (t.scale || 1) * factor));
+  if (state.mode === 'mask') samplerDirty = true;
+  draw();
+}, { passive: false });
 
 function pointsArr() { return [...pointers.values()]; }
 function centroid(pts) {
