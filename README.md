@@ -1,28 +1,61 @@
 # pale.vine
 
-Генератор сетки точек (halftone) из чёрно-белой маски. PWA — ставится на iPad как приложение, работает офлайн.
+A tattoo layout generator for **[@pale.vine](https://www.instagram.com/pale.vine/)**.
 
-## Как работает
+Drop in a black & white image and it becomes a mask for a grid of dots —
+brightness drives dot size, so a photo or sketch turns into a stippled
+halftone field you can lay behind linework. Tune spacing, size, dispersion,
+seed and threshold, frame it on an A4 artboard, and export a print-resolution
+PNG ready for the stencil.
 
-1. Загружаешь ЧБ изображение → оно становится **маской**.
-2. По маске рисуется сетка точек:
-   - **чёрные** зоны → точки рисуются, белые → пусто (порог настраивается);
-   - **яркость** пикселя управляет размером точки (темнее → крупнее);
-   - точки = круги (цвет точек и фона настраиваются).
-3. Параметры: размер точек, шаг сетки, влияние яркости на размер, дисперсия размера, дисперсия позиции, порог, инверсия.
-4. **Экспорт PNG** в высоком разрешении для печати (задаёшь длинную сторону в px).
+Runs as a PWA — install it to an iPad and work offline.
 
-## Два режима
+```
+                                              .
+                                          .  · .
+                                      · . · .··  .
+            \                      . ·.··:····· ·
+             \\                  .·.··::·:·····::··
+              \\\              ·.··::·:●·:·:::····· .
+        _____  \\\__         .·:·:●·::●·::::::::···· ·
+       /     \__    \___    ·:·●::●::::::::::::···· .
+      /          \      \  ·::●::::::::::::::····· .
+  ___/        ___ \_     \·::::::::::::::::····· ·
+ /          _/   \  \__   \:::::::::::::····· .
+/      ____/      \    \___/:::::::::····· .
+\____ /            \       /::::····· ·
+     \\\            \     /·····  .
+      \\\\           \___/···  .
+       \\\\\           /  ·· .
+        \  \\\        /  .
+         \   \\\____ /
+          \   \    \\\
+           \   \    \\\\
+            \   \____ \\\\
+                     \  \\
+                      \  \\
+                       \__\
+```
 
-- **Canvas** — просмотр результата. Жесты двумя пальцами: зум, поворот, перенос (только просмотр, на экспорт не влияет).
-- **Маска** — позиционирование и масштаб маски внутри артборда. Жестами двигаешь/масштабируешь маску, затем возвращаешься на Canvas посмотреть.
+## How it works
 
-## Установка на iPad
+1. **Load a B&W image** — it becomes the mask.
+2. A **grid of dots** is rendered from it:
+   - dark areas get dots, light areas stay empty (adjustable threshold);
+   - **brightness controls dot size** (darker → larger);
+   - **dispersion** randomizes dot size and position; change the **seed** for a new layout.
+3. **Export PNG** at print resolution (set the long-side pixels).
 
-1. Открой страницу в Safari.
-2. Поделиться → «На экран Домой».
-3. Запускай как приложение (офлайн работает).
+## Two modes
 
-## Стек
+- **Canvas** — preview the result. Two fingers: zoom / rotate / pan (view only).
+  Three fingers (or right-drag on desktop): pan the dot grid. Wheel zooms the view.
+- **Mask** — position and scale the mask inside the A4 artboard, then switch back.
 
-Vanilla JS + Canvas, без зависимостей. GitHub Pages.
+## Install on iPad
+
+Open in Safari → Share → *Add to Home Screen*. Launches like an app, works offline.
+
+## Stack
+
+Vanilla JS + Canvas, no dependencies. Hosted on GitHub Pages.
