@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#111111" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="pale.vine" />
+  <link rel="apple-touch-icon" href="icons/icon-180.png" />
+  <link rel="icon" type="image/png" href="favicon.png" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <title>pale.vine</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="app">
+    <!-- Stage -->
+    <main id="stage">
+      <canvas id="screen"></canvas>
+
+      <div id="mode-badge" class="badge">Canvas</div>
+
+      <div id="empty-hint">
+        <div class="hint-card">
+          <h1>pale.vine</h1>
+          <p>Загрузи чёрно-белое изображение — оно станет маской для сетки точек.</p>
+          <button id="load-empty" class="btn btn-primary">Загрузить изображение</button>
+        </div>
+      </div>
+    </main>
+
+    <!-- Toolbar -->
+    <aside id="panel">
+      <header class="panel-head">
+        <span class="logo">●&nbsp;pale.vine</span>
+        <button id="panel-toggle" class="icon-btn" title="Свернуть">⟨</button>
+      </header>
+
+      <div class="panel-body">
+        <div class="seg" id="mode-switch">
+          <button data-mode="canvas" class="seg-btn active">Canvas</button>
+          <button data-mode="mask" class="seg-btn">Маска</button>
+        </div>
+
+        <div class="row">
+          <button id="load-btn" class="btn">Загрузить маску</button>
+          <input id="file" type="file" accept="image/*" hidden />
+        </div>
+
+        <fieldset class="group" id="dot-params">
+          <legend>Точки</legend>
+
+          <label class="ctl">
+            <span class="ctl-label">Размер точек <b id="v-size">6</b> px</span>
+            <input id="size" type="range" min="0.5" max="40" step="0.5" value="6" />
+          </label>
+
+          <label class="ctl">
+            <span class="ctl-label">Шаг сетки <b id="v-spacing">14</b> px</span>
+            <input id="spacing" type="range" min="3" max="80" step="1" value="14" />
+          </label>
+
+          <label class="ctl">
+            <span class="ctl-label">Яркость → размер <b id="v-influence">70</b>%</span>
+            <input id="influence" type="range" min="0" max="100" step="1" value="70" />
+          </label>
+
+          <label class="ctl">
+            <span class="ctl-label">Дисперсия размера <b id="v-sizevar">15</b>%</span>
+            <input id="sizevar" type="range" min="0" max="100" step="1" value="15" />
+          </label>
+
+          <label class="ctl">
+            <span class="ctl-label">Дисперсия позиции <b id="v-posvar">20</b>%</span>
+            <input id="posvar" type="range" min="0" max="100" step="1" value="20" />
+          </label>
+
+          <label class="ctl">
+            <span class="ctl-label">Порог чёрного <b id="v-threshold">50</b>%</span>
+            <input id="threshold" type="range" min="0" max="100" step="1" value="50" />
+          </label>
+
+          <label class="chk">
+            <input id="invert" type="checkbox" />
+            <span>Инвертировать маску</span>
+          </label>
+
+          <div class="colors">
+            <label class="color-ctl"><span>Точки</span><input id="dot-color" type="color" value="#111111" /></label>
+            <label class="color-ctl"><span>Фон</span><input id="bg-color" type="color" value="#ffffff" /></label>
+          </div>
+        </fieldset>
+
+        <fieldset class="group" id="view-actions">
+          <legend>Вид</legend>
+          <button id="reset-view" class="btn">Сбросить зум / поворот</button>
+          <p class="muted">Два пальца: зум, поворот, перенос. Только просмотр — на экспорт не влияет.</p>
+        </fieldset>
+
+        <fieldset class="group" id="mask-actions" hidden>
+          <legend>Маска</legend>
+          <button id="fit-mask" class="btn">Вписать маску в артборд</button>
+          <p class="muted">Двигай и масштабируй маску двумя пальцами, затем вернись на Canvas.</p>
+        </fieldset>
+
+        <fieldset class="group">
+          <legend>Экспорт PNG</legend>
+          <label class="ctl">
+            <span class="ctl-label">Длинная сторона <b id="v-exportpx">3000</b> px</span>
+            <input id="exportpx" type="range" min="1000" max="10000" step="100" value="3000" />
+          </label>
+          <p class="muted" id="export-info">— · — px</p>
+          <button id="export-btn" class="btn btn-primary">Скачать PNG</button>
+        </fieldset>
+      </div>
+    </aside>
+
+    <button id="panel-open" class="icon-btn floating" hidden>☰</button>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
